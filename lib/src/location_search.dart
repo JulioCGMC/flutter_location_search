@@ -227,8 +227,8 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
   /// args:
   ///     data (Map): A map of data fetched from OpenStreetMap API
   LocationData _getLocationData(Map data) {
-    final lat = double.parse(data['lat']);
-    final long = double.parse(data['lon']);
+    final lat = double.parse(data['lat'].toString());
+    final long = double.parse(data['lon'].toString());
     final addressData = data['address'] as Map<String, dynamic>;
 
     if (!widget.lightAddress) {
@@ -419,15 +419,14 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
             ],
           ),
         ),
-          Container(
-          margin: const EdgeInsets.all(5),
-              
-              child: const  Text(
-                '© OpenStreetMap contributors.',
-                style: TextStyle(
-                  fontSize: 10,
-                ),
-              ),
+        const Padding(
+          padding: EdgeInsets.all(8),
+          child: Text(
+            '© OpenStreetMap contributors.',
+            style: TextStyle(
+              fontSize: 10,
+            ),
+          ),
         ),
       ],
     );
@@ -451,11 +450,11 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     );
 
     final response = await _client.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent': widget.userAgent.toString(),
-        },
-      );
+      Uri.parse(url),
+      headers: {
+        'User-Agent': widget.userAgent.toString(),
+      },
+    );
 
     final decodedResponse =
         jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
