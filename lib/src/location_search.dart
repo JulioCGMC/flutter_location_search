@@ -664,6 +664,12 @@ class LocationSearch {
     Widget? loadingWidget,
     Mode mode = Mode.fullscreen,
     int historyMaxLength = 5,
+    bool showAddressNumberOption = true,
+    String addressNumberButtonText = "Add number",
+    IconData? addressNumberButtonIcon = Icons.add,
+    Color? addressNumberButtonColor,
+    Color? addressNumberButtonBackground,
+    double addressNumberButtonTextSize = 12,
   }) {
     LocationSearchWidget builder(BuildContext ctx) => LocationSearchWidget(
           onPicked: (data) => Navigator.pop(context, data),
@@ -681,6 +687,12 @@ class LocationSearch {
           mode: mode,
           historyMaxLength: historyMaxLength,
           userAgent: userAgent,
+          showAddressNumberOption: showAddressNumberOption,
+          addressNumberButtonText: addressNumberButtonText,
+          addressNumberButtonIcon: addressNumberButtonIcon,
+          addressNumberButtonColor: addressNumberButtonColor,
+          addressNumberButtonBackground: addressNumberButtonBackground,
+          addressNumberButtonTextSize: addressNumberButtonTextSize,
         );
 
     if (mode == Mode.overlay) {

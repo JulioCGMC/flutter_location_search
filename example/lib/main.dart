@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_location_search/flutter_location_search.dart';
+import 'package:flutter_location_search/flutter_location_search2.dart';
 
 void main() => runApp(const MyApp());
 
@@ -25,11 +25,12 @@ class _MyAppState extends State<MyApp> {
               child: Text(_locationText),
               onPressed: () async {
                 LocationData? locationData = await LocationSearch.show(
-                  context: context,
-                  lightAddress: true,
-                  mode: Mode.overlay,
-                  userAgent: UserAgent(appName: 'Location Search Example', email: 'support@myapp.com')
-                );
+                    context: context,
+                    lightAddress: true,
+                    mode: Mode.overlay,
+                    userAgent: UserAgent(
+                        appName: 'Location Search Example',
+                        email: 'support@myapp.com'));
 
                 if (locationData == null) return;
 
