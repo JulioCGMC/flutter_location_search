@@ -27,6 +27,30 @@ class LocationSearchWidget extends StatefulWidget {
   ///
   final String? language;
 
+  /// [showAddressNumberOption] : (bool) shows the Add number button
+  ///
+  final bool showAddressNumberOption;
+
+  /// [addressNumberButtonText] : (String) Add number button text
+  ///
+  final String addressNumberButtonText;
+
+  /// [addressNumberButtonIcon] : (IconData) Add number button icon
+  ///
+  final IconData? addressNumberButtonIcon;
+
+  /// [addressNumberButtonColor] : (Color) Add number button foreground color
+  ///
+  final Color? addressNumberButtonColor;
+
+  /// [addressNumberButtonBackground] : (Color) Add number button background color
+  ///
+  final Color? addressNumberButtonBackground;
+
+  /// [addressNumberButtonTextSize] : (double) Add number button text and icon size
+  ///
+  final double addressNumberButtonTextSize;
+
   /// [countryCodes] : Limit search results to one or more countries
   ///
   final List<String>? countryCodes;
@@ -101,6 +125,12 @@ class LocationSearchWidget extends StatefulWidget {
     this.iconColor = Colors.grey,
     this.mode = Mode.fullscreen,
     this.historyMaxLength = 5,
+    this.showAddressNumberOption = true,
+    this.addressNumberButtonText = "Add number",
+    this.addressNumberButtonIcon = Icons.add,
+    this.addressNumberButtonColor,
+    this.addressNumberButtonBackground,
+    this.addressNumberButtonTextSize = 12,
     Widget? loadingWidget,
   }) : loadingWidget = loadingWidget ?? const CircularProgressIndicator();
 
@@ -123,6 +153,7 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
   final List<LocationData> _history = [];
   final _historyManager = HistoryManager();
   bool _isCurrentLocationLoading = false;
+  LocationData? currentLocation;
 
   /// It returns true if the text is RTL, false if it's LTR
   ///
@@ -274,6 +305,29 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     }
   }
 
+  /// It tries to catch the inserted address number from the search string
+  getAddressNumberFromString(String address) {
+    if (currentLocation != null) {
+      String number = address;
+      currentLocation!.addressData.forEach((key, value) {
+        number = number.replaceFirst(value, '');
+      });
+      number = number.replaceAll(',', '').trim();
+      final item = LocationData(
+        address: address,
+        latitude: currentLocation!.latitude,
+        longitude: currentLocation!.longitude,
+        addressData: {
+          ...currentLocation!.addressData,
+          ...{'number': number}
+        },
+      );
+      _onResultTap(item);
+    } else {
+      _searchController.clear();
+    }
+  }
+
   Future<void> _loadHistory() async {
     final historyJson = await _historyManager.getHistory();
     if (historyJson.isNotEmpty) {
@@ -314,6 +368,13 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     super.dispose();
   }
 
+  void moveCursorToPosition(int index) {
+    final length = _searchController.text.length;
+    final safeIndex =
+        index.clamp(0, length); // evita crash se o índice for maior que o texto
+    _searchController.selection = TextSelection.collapsed(offset: safeIndex);
+  }
+
   Widget _buildListView() {
     return SliverList.separated(
       itemCount: _options.isEmpty ? _history.length : _options.length,
@@ -322,25 +383,56 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
         final isHistory = _options.isEmpty;
         final item = items[index];
 
-        return ListTile(
-          leading: isHistory
-              ? Icon(
-                  Icons.watch_later_outlined,
-                  color: widget.iconColor,
-                )
-              : null,
-          trailing: Icon(
-            Icons.chevron_right,
-            color: widget.iconColor,
-            size: 30,
-          ),
-          title: Text(
-            item.address,
-            style: TextStyle(
-              color: widget.searchBarTextColor,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: isHistory
+                  ? Icon(
+                      Icons.watch_later_outlined,
+                      color: widget.iconColor,
+                    )
+                  : null,
+              trailing: Icon(
+                Icons.chevron_right,
+                color: widget.iconColor,
+                size: 30,
+              ),
+              title: Text(
+                item.address,
+                style: TextStyle(
+                  color: widget.searchBarTextColor,
+                ),
+              ),
+              onTap: () => _onResultTap(item),
             ),
-          ),
-          onTap: () => _onResultTap(item),
+            if (widget.showAddressNumberOption &&
+                item.addressData.containsKey('road') &&
+                !item.addressData.containsKey('number'))
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.addressNumberButtonBackground),
+                  onPressed: () => _onResultTap(item, true),
+                  label: Text(
+                    widget.addressNumberButtonText,
+                    style: TextStyle(
+                      fontSize: widget.addressNumberButtonTextSize,
+                      color: widget.addressNumberButtonColor,
+                    ),
+                  ),
+                  icon: widget.addressNumberButtonIcon != null
+                      ? Icon(
+                          widget.addressNumberButtonIcon,
+                          size: widget.addressNumberButtonTextSize + 6,
+                          color: widget.addressNumberButtonColor,
+                        )
+                      : null,
+                ),
+              )
+          ],
         );
       },
       separatorBuilder: (context, index) => Divider(
@@ -349,15 +441,22 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     );
   }
 
-  void _onResultTap(LocationData item) {
-    if (_options.isNotEmpty) {
+  void _onResultTap(LocationData item, [bool addNumber = false]) {
+    if (_options.isNotEmpty && !addNumber) {
       _addToHistory(item);
     }
     setAddressInSearchBar(item.address);
 
-    widget.onPicked!(item);
-    _focusNode.unfocus();
-    _options.clear();
+    if (addNumber) {
+      _focusNode.requestFocus();
+      currentLocation = item;
+      moveCursorToPosition(
+          (item.addressData['road'] ?? '').toString().length + 1);
+    } else {
+      widget.onPicked!(item);
+      _focusNode.unfocus();
+      _options.clear();
+    }
     setState(() {});
   }
 
@@ -406,15 +505,21 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
                 }
               });
             },
+            onFieldSubmitted: (value) {
+              if (currentLocation != null) {
+                getAddressNumberFromString(value);
+              }
+            },
           ),
         ),
         Expanded(
           child: CustomScrollView(
             controller: ScrollController(),
             slivers: [
-              SliverToBoxAdapter(
-                child: _buildSelectCurrentPositionButton(),
-              ),
+              if (!widget.showAddressNumberOption)
+                SliverToBoxAdapter(
+                  child: _buildSelectCurrentPositionButton(),
+                ),
               _buildListView(),
             ],
           ),
@@ -448,6 +553,7 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
           'countrycodes': widget.countryCodes!.join(','),
       },
     );
+    debugPrint(uri.toString());
 
     final response = await _client.get(
       Uri.parse(url),
