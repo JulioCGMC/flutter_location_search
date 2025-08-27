@@ -1,6 +1,6 @@
 name: flutter_location_search2
 description: Package that provides Place search with history of latest location searched using Open Street Map. It is easy to custom and can be displayed in fullscreen or overlay mode
-version: 2.2.3
+version: 2.2.4
 homepage: https://github.com/KomInc/flutter_location_search
 license: MIT
 
