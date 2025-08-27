@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_location_search/flutter_location_search2.dart';
+import 'package:flutter_location_search2/flutter_location_search2.dart';
 
 void main() => runApp(const MyApp());
 

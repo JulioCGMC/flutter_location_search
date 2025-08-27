@@ -118,13 +118,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
-  flutter_location_search:
+  flutter_location_search2:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "2.1.0"
+    version: "2.1.1"
   flutter_test:
     dependency: "direct dev"
     description: flutter

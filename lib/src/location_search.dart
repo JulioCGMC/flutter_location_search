@@ -109,6 +109,10 @@ class LocationSearchWidget extends StatefulWidget {
 
   final UserAgent userAgent;
 
+  /// [upperWidget] : Widget to show upside the list
+  ///
+  final Widget Function(BuildContext context)? upperWidget;
+
   const LocationSearchWidget({
     super.key,
     required this.onPicked,
@@ -131,6 +135,7 @@ class LocationSearchWidget extends StatefulWidget {
     this.addressNumberButtonColor,
     this.addressNumberButtonBackground,
     this.addressNumberButtonTextSize = 12,
+    this.upperWidget,
     Widget? loadingWidget,
   }) : loadingWidget = loadingWidget ?? const CircularProgressIndicator();
 
@@ -372,7 +377,13 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     final length = _searchController.text.length;
     final safeIndex =
         index.clamp(0, length); // evita crash se o índice for maior que o texto
-    _searchController.selection = TextSelection.collapsed(offset: safeIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+      Future.delayed(const Duration(milliseconds: 1), () {
+        _searchController.selection =
+            TextSelection.collapsed(offset: safeIndex);
+      });
+    });
   }
 
   Widget _buildListView() {
@@ -382,7 +393,6 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
         final items = _options.isEmpty ? _history : _options;
         final isHistory = _options.isEmpty;
         final item = items[index];
-
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +458,6 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     setAddressInSearchBar(item.address);
 
     if (addNumber) {
-      _focusNode.requestFocus();
       currentLocation = item;
       moveCursorToPosition(
           (item.addressData['road'] ?? '').toString().length + 1);
@@ -512,6 +521,7 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
             },
           ),
         ),
+        if (widget.upperWidget != null) widget.upperWidget!.call(context),
         Expanded(
           child: CustomScrollView(
             controller: ScrollController(),
@@ -662,6 +672,7 @@ class LocationSearch {
     bool lightAddress = false,
     Color iconColor = Colors.grey,
     Widget? loadingWidget,
+    Widget Function(BuildContext context)? upperWidget,
     Mode mode = Mode.fullscreen,
     int historyMaxLength = 5,
     bool showAddressNumberOption = true,
@@ -683,6 +694,7 @@ class LocationSearch {
           searchBarHintColor: searchBarHintColor,
           lightAddress: lightAddress,
           iconColor: iconColor,
+          upperWidget: upperWidget,
           loadingWidget: loadingWidget,
           mode: mode,
           historyMaxLength: historyMaxLength,
