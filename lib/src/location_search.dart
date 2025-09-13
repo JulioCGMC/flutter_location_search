@@ -113,6 +113,10 @@ class LocationSearchWidget extends StatefulWidget {
   ///
   final Widget Function(BuildContext context)? upperWidget;
 
+  /// [googlePlacesSearchKey] : Key to get the Google Places API search
+  ///
+  final String? googlePlacesSearchKey;
+
   const LocationSearchWidget({
     super.key,
     required this.onPicked,
@@ -136,6 +140,7 @@ class LocationSearchWidget extends StatefulWidget {
     this.addressNumberButtonBackground,
     this.addressNumberButtonTextSize = 12,
     this.upperWidget,
+    this.googlePlacesSearchKey,
     Widget? loadingWidget,
   }) : loadingWidget = loadingWidget ?? const CircularProgressIndicator();
 
@@ -263,6 +268,58 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
   /// args:
   ///     data (Map): A map of data fetched from OpenStreetMap API
   LocationData _getLocationData(Map data) {
+    if (widget.googlePlacesSearchKey != null) {
+      googleAddressHasType(List<Map<String, dynamic>> values, String type,
+          [bool longValue = true]) {
+        final val = values
+            .where((e) => e['types'].contains('street_number'))
+            .firstOrNull;
+        if (val == null) {
+          return '';
+        }
+        return longValue ? val['longName'] : val['shortName'];
+      }
+
+      return LocationData(
+        latitude: data['location']['latitude'],
+        longitude: data['location']['longitude'],
+        address: data['formattedAddress'],
+        addressData: {
+          "road": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'street_number',
+          ),
+          'number': googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'street_number',
+          ),
+          "suburb": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'sublocality_level_1',
+          ),
+          "municipality": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'administrative_area_level_2',
+          ),
+          "state": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'administrative_area_level_1',
+          ),
+          "postcode": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'postal_code',
+          ),
+          "country": googleAddressHasType(
+            List<Map<String, dynamic>>.from(data['addressComponents']),
+            'country',
+          ),
+          "country_code": googleAddressHasType(
+              List<Map<String, dynamic>>.from(data['addressComponents']),
+              'country',
+              false),
+        },
+      );
+    }
     final lat = double.parse(data['lat'].toString());
     final long = double.parse(data['lon'].toString());
     final addressData = data['address'] as Map<String, dynamic>;
@@ -419,7 +476,8 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
             ),
             if (widget.showAddressNumberOption &&
                 item.addressData.containsKey('road') &&
-                !item.addressData.containsKey('number'))
+                (!item.addressData.containsKey('number') ||
+                    item.addressData.isEmpty))
               Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: ElevatedButton.icon(
@@ -534,11 +592,13 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
             ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.all(8),
+        Padding(
+          padding: const EdgeInsets.all(8),
           child: Text(
-            '© OpenStreetMap contributors.',
-            style: TextStyle(
+            widget.googlePlacesSearchKey != null
+                ? '© Google'
+                : '© OpenStreetMap contributors.',
+            style: const TextStyle(
               fontSize: 10,
             ),
           ),
@@ -548,33 +608,59 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
   }
 
   Future<List<LocationData>> _onSearch(String value) async {
-    final url =
-        "https://nominatim.openstreetmap.org/search?q=$value&format=json&polygon_geojson=1&addressdetails=1&accept-language=${widget.language}${widget.countryCodes == null ? '' : '&countrycodes=${widget.countryCodes}'}";
-    final uri = Uri.https(
-      'nominatim.openstreetmap.org',
-      '/search',
-      {
-        'q': value,
-        'format': 'json',
-        'polygon_geojson': '1',
-        'addressdetails': '1',
-        'accept-language': widget.language,
-        if (widget.countryCodes != null)
-          'countrycodes': widget.countryCodes!.join(','),
-      },
-    );
-    debugPrint(uri.toString());
+    if (widget.googlePlacesSearchKey != null) {
+      final url =
+          Uri.parse("https://places.googleapis.com/v1/places:searchText");
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': widget.googlePlacesSearchKey!,
+          'X-Goog-FieldMask':
+              'places.displayName,places.formattedAddress,places.priceLevel,places.addressComponents,places.location',
+        },
+        body: jsonEncode({
+          "textQuery": value,
+          "languageCode": widget.language,
+        }),
+      );
 
-    final response = await _client.get(
-      Uri.parse(url),
-      headers: {
-        'User-Agent': widget.userAgent.toString(),
-      },
-    );
+      if (response.statusCode == 200) {
+        final decodedResponse =
+            jsonDecode(utf8.decode(response.bodyBytes))['places']
+                as List<dynamic>;
+        return decodedResponse.map((e) => _getLocationData(e)).toList();
+      }
+      return [];
+    } else {
+      final url =
+          "https://nominatim.openstreetmap.org/search?q=$value&format=json&polygon_geojson=1&addressdetails=1&accept-language=${widget.language}${widget.countryCodes == null ? '' : '&countrycodes=${widget.countryCodes}'}";
+      final uri = Uri.https(
+        'nominatim.openstreetmap.org',
+        '/search',
+        {
+          'q': value,
+          'format': 'json',
+          'polygon_geojson': '1',
+          'addressdetails': '1',
+          'accept-language': widget.language,
+          if (widget.countryCodes != null)
+            'countrycodes': widget.countryCodes!.join(','),
+        },
+      );
+      debugPrint(uri.toString());
 
-    final decodedResponse =
-        jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
-    return decodedResponse.map((e) => _getLocationData(e)).toList();
+      final response = await _client.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': widget.userAgent.toString(),
+        },
+      );
+
+      final decodedResponse =
+          jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
+      return decodedResponse.map((e) => _getLocationData(e)).toList();
+    }
   }
 
   /// Button to select current location
@@ -673,6 +759,7 @@ class LocationSearch {
     Color iconColor = Colors.grey,
     Widget? loadingWidget,
     Widget Function(BuildContext context)? upperWidget,
+    String? googlePlacesSearchKey,
     Mode mode = Mode.fullscreen,
     int historyMaxLength = 5,
     bool showAddressNumberOption = true,
@@ -695,6 +782,7 @@ class LocationSearch {
           lightAddress: lightAddress,
           iconColor: iconColor,
           upperWidget: upperWidget,
+          googlePlacesSearchKey: googlePlacesSearchKey,
           loadingWidget: loadingWidget,
           mode: mode,
           historyMaxLength: historyMaxLength,

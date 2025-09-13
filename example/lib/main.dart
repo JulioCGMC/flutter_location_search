@@ -27,6 +27,8 @@ class _MyAppState extends State<MyApp> {
                 LocationData? locationData = await LocationSearch.show(
                     context: context,
                     lightAddress: true,
+                    googlePlacesSearchKey:
+                        "AIzaSyBdHEPmfuoVSmzh4RP-xlmvhPgxm2GdH7o",
                     mode: Mode.overlay,
                     userAgent: UserAgent(
                         appName: 'Location Search Example',
