@@ -28,8 +28,7 @@ class _MyAppState extends State<MyApp> {
                     context: context,
                     lightAddress: true,
                     showAddressNumberOption: true,
-                    googlePlacesSearchKey:
-                        "AIzaSyBdHEPmfuoVSmzh4RP-xlmvhPgxm2GdH7o",
+                    googlePlacesSearchKey: "GOOGLE-API-KEY",
                     mode: Mode.overlay,
                     userAgent: UserAgent(
                         appName: 'Location Search Example',
