@@ -1,3 +1,7 @@
+## 2.3.1
+
+- Add google places search as a option to the open street maps
+
 ## 2.1.0
 
 - Add option to add address number
