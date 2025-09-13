@@ -271,13 +271,11 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
     if (widget.googlePlacesSearchKey != null) {
       googleAddressHasType(List<Map<String, dynamic>> values, String type,
           [bool longValue = true]) {
-        final val = values
-            .where((e) => e['types'].contains('street_number'))
-            .firstOrNull;
+        final val = values.where((e) => e['types'].contains(type)).firstOrNull;
         if (val == null) {
           return '';
         }
-        return longValue ? val['longName'] : val['shortName'];
+        return longValue ? val['longText'] : val['shortText'];
       }
 
       return LocationData(
@@ -287,7 +285,7 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
         addressData: {
           "road": googleAddressHasType(
             List<Map<String, dynamic>>.from(data['addressComponents']),
-            'street_number',
+            'route',
           ),
           'number': googleAddressHasType(
             List<Map<String, dynamic>>.from(data['addressComponents']),
@@ -477,7 +475,7 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
             if (widget.showAddressNumberOption &&
                 item.addressData.containsKey('road') &&
                 (!item.addressData.containsKey('number') ||
-                    item.addressData.isEmpty))
+                    item.addressData['number'].isEmpty))
               Padding(
                 padding: const EdgeInsets.only(left: 12),
                 child: ElevatedButton.icon(
@@ -629,7 +627,8 @@ class _LocationSearchWidgetState extends State<LocationSearchWidget> {
         final decodedResponse =
             jsonDecode(utf8.decode(response.bodyBytes))['places']
                 as List<dynamic>;
-        return decodedResponse.map((e) => _getLocationData(e)).toList();
+        final teste = decodedResponse.map((e) => _getLocationData(e)).toList();
+        return teste;
       }
       return [];
     } else {
